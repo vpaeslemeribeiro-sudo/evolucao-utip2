@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Evolução Médica Diária — UTI Pediátrica (20 Leitos)</title>
+<style>
+  :root {
+    --primary: #0f4c81;
+    --primary-light: #e8f1fa;
+    --accent: #0d9488;
+    --accent-light: #ccfbf1;
+    --bg: #f1f5f9;
+    --card: #ffffff;
+    --text: #1e293b;
+    --muted: #64748b;
+    --border: #cbd5e1;
+    --danger: #dc2626;
+    --danger-light: #fee2e2;
+  }
+  * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { margin: 0; background: var(--bg); color: var(--text); padding-bottom: 40px; }
+  
+  header {
+    background: var(--primary);
+    color: white;
+    padding: 14px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  }
+  header h1 { margin: 0; font-size: 1.15rem; font-weight: 700; }
+  header small { display: block; font-size: 0.78rem; opacity: 0.85; }
+  .header-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  button {
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    transition: 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .btn-light { background: rgba(255,255,255,0.18); color: white; border: 1px solid rgba(255,255,255,0.3); }
+  .btn-light:hover { background: rgba(255,255,255,0.28); }
+  .btn-accent { background: var(--accent); color: white; }
+  .btn-accent:hover { background: #0f766e; }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: #0a365c; }
+  .btn-outline { background: white; color: var(--primary); border: 1px solid var(--primary); }
+  .btn-outline:hover { background: var(--primary-light); }
+  .btn-danger { background: var(--danger-light); color: var(--danger); border: 1px solid #fca5a5; }
+  .btn-danger:hover { background: #fecaca; }
+
+  .container { max-width: 1200px; margin: 16px auto; padding: 0 14px; }
+
+  /* MAPA DE LEITOS */
+  .mapa-box {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    border: 1px solid var(--border);
+  }
+  .mapa-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .mapa-header h2 { margin: 0; font-size: 0.95rem; color: var(--primary); }
+  .mapa-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+    gap: 8px;
+  }
+  .leito-card {
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: #f8fafc;
+    cursor: pointer;
+    transition: 0.15s;
+    text-align: left;
+  }
+  .leito-card:hover { border-color: var(--primary); background: var(--primary-light); }
+  .leito-card.ocupado { background: #f0fdfa; border-color: #5eead4; }
+  .leito-card.ativo {
+    border: 2px solid var(--primary);
+    background: var(--primary-light);
+    box-shadow: 0 0 0 2px rgba(15,76,129,0.18);
+  }
+  .leito-num { font-size: 0.72rem; font-weight: 800; color: var(--primary); text-transform: uppercase; }
+  .leito-nome { font-size: 0.85rem; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 2px 0; }
+  .leito-meta { font-size: 0.74rem; color: var(--muted); }
+
+  /* LAYOUT PRINCIPAL */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+  @media (max-width: 920px) {
+    .main-grid { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    border: 1px solid var(--border);
+  }
+  .card-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--primary);
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 8px;
+    margin: 0 0 12px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 10px; }
+  .field { display: flex; flex-direction: column; }
+  label { font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 3px; }
+  input, select, textarea {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 9px;
+    font-size: 0.85rem;
+    color: var(--text);
+    background: #fff;
+    width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); }
+  textarea { resize: vertical; min-height: 58px; line-height: 1.4; }
+
+  .calc-banner {
+    background: var(--primary-light);
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .calc-item span { display: block; font-size: 0.7rem; color: #475569; font-weight: 600; }
+  .calc-item strong { font-size: 0.92rem; color: var(--primary); }
+
+  /* LISTAS DINÂMICAS */
+  .dyn-item {
+    display: grid;
+    grid-template-columns: 1fr 130px 70px 32px;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 6px;
+    background: #f8fafc;
+    padding: 6px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+  }
+  @media (max-width: 550px) {
+    .dyn-item { grid-template-columns: 1fr 120px; }
+  }
+  .badge-dias {
+    background: var(--accent-light);
+    color: #0f766e;
+    font-weight: 700;
+    font-size: 0.78rem;
+    text-align: center;
+    padding: 5px;
+    border-radius: 5px;
+  }
+  .btn-del-item {
+    background: #fee2e2;
+    color: #dc2626;
+    padding: 5px;
+    justify-content: center;
+    font-weight: bold;
+  }
+
+  /* PREVIEW */
+  .preview-sticky { position: sticky; top: 72px; }
+  #textoEvolucao {
+    width: 100%;
+    height: 540px;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.82rem;
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    line-height: 1.45;
+  }
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #0f172a;
+    color: white;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: none;
+    z-index: 999;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🏥 Evolução Médica Diária — UTI Pediátrica</h1>
+    <small id="dataHojeHeader">Atualização automática de idade, DIH, DIU e dispositivos</small>
+  </div>
+  <div class="header-actions">
+    <button class="btn-light" onclick="carregarExemplo()">📋 Exemplo Clínico</button>
+    <button class="btn-light" onclick="exportarPlantao()">📤 Exportar Plantão (JSON)</button>
+    <button class="btn-light" onclick="document.getElementById('importFile').click()">📥 Juntar / Importar</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importarMesclarPlantao(event)">
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- MAPA DE 20 LEITOS -->
+  <div class="mapa-box">
+    <div class="mapa-header">
+      <h2>🛏️ Mapa de Leitos (01 a 20) — Toque para alternar</h2>
+      <span style="font-size:0.76rem; color:var(--muted);">Salvo automaticamente neste dispositivo • Use Exportar/Juntar para dividir leitos entre colegas</span>
+    </div>
+    <div class="mapa-grid" id="mapaLeitos"></div>
+  </div>
+
+  <div class="main-grid">
+    <!-- COLUNA ESQUERDA: FORMULÁRIO -->
+    <div>
+      <!-- 1. IDENTIFICAÇÃO -->
+      <div class="card">
+        <div class="card-title">
+          <span id="tituloLeitoAtivo">1. Identificação e Internação — Leito 01</span>
+          <button class="btn-danger" onclick="liberarLeito()">🚪 Alta / Liberar Leito</button>
+        </div>
+        <div class="row">
+          <div class="field" style="grid-column: span 2;">
+            <label>Nome Completo do Paciente</label>
+            <input type="text" id="nome" placeholder="Ex: João Pedro Silva" oninput="salvarAtual()">
+          </div>
+          <div class="field">
+            <label>Data de Nascimento</label>
+            <input type="date" id="dn" onchange="salvarAtual()">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Peso Atual (kg)</label>
+            <input type="number" step="0.01" id="peso" placeholder="Ex: 12.5" oninput="salvarAtual()">
+          </div>
+          <div class="field">
+            <label>Estatura (cm) — Opcional</label>
+            <input type="number" step="0.1" id="estatura" placeholder="Ex: 88" oninput="salvarAtual()">
+          </div>
+          <div class="field">
+            <label>% Holliday-Segar</label>
+            <input type="number" id="pctHolliday" value="100" oninput="salvarAtual()">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Procedência</label>
+            <input type="text" id="procedencia" placeholder="Ex: Pronto-Socorro / Centro Cirúrgico" oninput="salvarAtual()">
+          </div>
+          <div class="field">
+            <label>Residência (Cidade/UF)</label>
+            <input type="text" id="residencia" placeholder="Ex: Cuiabá - MT" oninput="salvarAtual()">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Data Internação Hospitalar</label>
+            <input type="date" id="dihData" onchange="salvarAtual()">
+          </div>
+          <div class="field">
+            <label>Data Internação UTIP</label>
+            <input type="date" id="diuData" onchange="salvarAtual()">
+          </div>
+          <div class="field">
+            <label>Alergias / Tipo Sanguíneo</label>
+            <input type="text" id="alergias" placeholder="Ex: Nega / O+" oninput="salvarAtual()">
+          </div>
+        </div>
+
+        <div class="calc-banner">
+          <div class="calc-item"><span>Idade Calculada</span><strong id="calcIdade">—</strong></div>
+          <div class="calc-item"><span>Superfície Corpórea</span><strong id="calcSC">—</strong></div>
+          <div class="calc-item"><span>Peso Calórico (100%)</span><strong id="calcHolliday100">—</strong></div>
+          <div class="calc-item"><span>Meta Hídrica (<span id="lblPct">100</span>%)</span><strong id="calcHollidayMeta">—</strong></div>
+        </div>
+      </div>
+
+      <!-- 2. HIPÓTESES DIAGNÓSTICAS -->
+      <div class="card">
+        <div class="card-title">2. Hipóteses Diagnósticas</div>
+        <textarea id="hd" placeholder="1. Choque séptico de foco pulmonar&#10;2. Bronquiolite viral aguda / PNM bacteriana secundária" oninput="salvarAtual()"></textarea>
+      </div>
+
+      <!-- 3. SUPORTE VENTILATÓRIO, DISPOSITIVOS E MEDICAMENTOS -->
+      <div class="card">
+        <div class="card-title">3. Suporte Ventilatório, Dispositivos e Medicações</div>
+        
+        <div class="row">
+          <div class="field">
+            <label>Suporte Ventilatório Atual?</label>
+            <select id="svStatus" onchange="salvarAtual()">
+              <option value="Não (Ar ambiente)">Não (Ar ambiente)</option>
+              <option value="Sim - VMI (Ventilação Mecânica Invasiva)">Sim - VMI</option>
+              <option value="Sim - VNI (Ventilação Não Invasiva)">Sim - VNI</option>
+              <option value="Sim - CNAF (Cateter Nasal Alto Fluxo)">Sim - CNAF</option>
+              <option value="Sim - Cateter Nasal de O2">Sim - Cateter Nasal de O2</option>
+              <option value="Sim - Máscara Não Reinalante">Sim - Máscara Não Reinalante</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Data Início Suporte Atual</label>
+            <input type="date" id="svInicio" onchange="salvarAtual()">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Parâmetros Atuais / Histórico Suportes Prévios (com datas)</label>
+            <input type="text" id="svDetalhes" placeholder="Ex: PCV PI 16 PEEP 7 FiO2 35% | Prévio: CNAF de 10/11 a 12/11" oninput="salvarAtual()">
+          </div>
+        </div>
+
+        <label style="margin-top:10px; display:block; color:var(--primary);">Dispositivos em Uso (calcula dias automaticamente pela data de início):</label>
+        <div id="listaDispositivos"></div>
+        <button class="btn-outline" style="margin-bottom:10px;" onclick="addItem('dispositivos')">+ Adicionar Dispositivo</button>
+        
+        <div class="field" style="margin-bottom:12px;">
+          <label>Dispositivos Prévios Retirados (descrever datas de início e retirada)</label>
+          <input type="text" id="dispPrevios" placeholder="Ex: AVC femoral D de 10/11 até 15/11; SVD de 10/11 até 14/11" oninput="salvarAtual()">
+        </div>
+
+        <label style="display:block; color:var(--primary);">Antibióticos / Antifúngicos / Antivirais em Uso (calcula D1, D2...):</label>
+        <div id="listaAtb"></div>
+        <button class="btn-outline" style="margin-bottom:10px;" onclick="addItem('atb')">+ Adicionar Antimicrobiano</button>
+
+        <div class="field" style="margin-bottom:10px;">
+          <label>Outras Medicações em Uso Atual (DVA, sedação, analgesia, corticoides, etc.)</label>
+          <textarea id="medAtuais" placeholder="Ex: Noradrenalina 0,15 mcg/kg/min (início 18/11); Midazolam 0,2 mg/kg/h; Fentanil 2 mcg/kg/h" oninput="salvarAtual()"></textarea>
+        </div>
+        <div class="field">
+          <label>Medicamentos Prévios Suspensos / Concluídos (com datas)</label>
+          <input type="text" id="medPrevios" placeholder="Ex: Ceftriaxona de 10/11 até 14/11 (escalonado); Adrenalina de 10/11 até 12/11" oninput="salvarAtual()">
+        </div>
+      </div>
+
+      <!-- 4. CONSULTORIAS E EXAMES -->
+      <div class="card">
+        <div class="card-title">4. Consultorias e Exames Complementares</div>
+        <div class="field" style="margin-bottom:10px;">
+          <label>Consultorias / Especialidades (Especialidade + Data + Resumo)</label>
+          <textarea id="consultorias" placeholder="Ex: [18/11] Cirurgia Pediátrica: avaliou abdome, sem indicação cirúrgica no momento." oninput="salvarAtual()"></textarea>
+        </div>
+        <div class="field" style="margin-bottom:10px;">
+          <label>Principais Exames Laboratoriais e Culturas (com datas)</label>
+          <textarea id="examesLab" placeholder="Ex: [20/11] Hb 10,2 | Leuco 14.500 (Bast 6%) | Plaq 210.000 | PCR 48 | Cr 0,4 | Na 138 | K 4,1 | Gaso: pH 7,38 pCO2 38 HCO3 22 Lactato 1,2" oninput="salvarAtual()"></textarea>
+        </div>
+        <div class="field">
+          <label>Exames de Imagem e Outros (com datas)</label>
+          <textarea id="examesImg" placeholder="Ex: [19/11] RX Tórax: TOT bem posicionado em T3, hipotransparência em base direita." oninput="salvarAtual()"></textarea>
+        </div>
+      </div>
+
+      <!-- 5. EVOLUÇÃO 24H E EXAME FÍSICO -->
+      <div class="card">
+        <div class="card-title">
+          <span>5. Evolução 24h e Exame Físico</span>
+          <button class="btn-outline" onclick="preencherExameNormal()">✨ Preencher Exame Físico Normal</button>
+        </div>
+        <div class="field" style="margin-bottom:10px;">
+          <label>Intercorrências e Sinais Vitais / Balanço Hídrico (24h)</label>
+          <textarea id="evolucao24h" placeholder="Estável hemodinamicamente, afebril nas últimas 24h. FC 110-130 bpm | FR 24-30 irpm | PA 95/60 mmHg | SpO2 97% | BH 24h: +120 mL (+9,6 mL/kg) | Diurese: 2,4 mL/kg/h." oninput="salvarAtual()"></textarea>
+        </div>
+        <div class="field">
+          <label>Exame Físico Estruturado</label>
+          <textarea id="exameFisico" style="min-height:130px;" oninput="salvarAtual()"></textarea>
+        </div>
+      </div>
+
+      <!-- 6. CONDUTAS, PROGRAMAÇÃO E PENDÊNCIAS -->
+      <div class="card">
+        <div class="card-title">6. Conduta Propedêutica, Terapêutica, Programação e Pendências</div>
+        
+        <div class="field" style="margin-bottom:10px;">
+          <label>Conduta Propedêutica</label>
+          <textarea id="condPropedeutica" placeholder="Solicito hemograma, PCR, eletrólitos, gasometria arterial e RX de tórax para amanhã às 06h." oninput="salvarAtual()"></textarea>
+        </div>
+
+        <label style="display:block; color:var(--primary); margin:8px 0 4px;">Conduta Terapêutica (Sequência Estruturada):</label>
+        <div class="row">
+          <div class="field"><label>1. Dieta / Jejum</label><input type="text" id="ctDieta" placeholder="Ex: Dieta enteral polimérica via SNE 40 mL 3/3h (100 kcal/kg/dia)" oninput="salvarAtual()"></div>
+          <div class="field"><label>2. Hidratação Venosa (HV)</label><input type="text" id="ctHv" placeholder="Ex: SG 5% + NaCl 20% + KCl 19,1% a 80% da Holliday-Segar" oninput="salvarAtual()"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>3. Antibióticos / Antimicrobianos</label><input type="text" id="ctAtb" placeholder="Ex: Mantenho Cefepime (D4) e Vancomicina (D4)" oninput="salvarAtual()"></div>
+          <div class="field"><label>4. Drogas Vasoativas (DVA)</label><input type="text" id="ctDva" placeholder="Ex: Desmame gradual de Noradrenalina conforme PAM" oninput="salvarAtual()"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>5. Sedação</label><input type="text" id="ctSedacao" placeholder="Ex: Midazolam contínuo, alvo RASS -2 a -3" oninput="salvarAtual()"></div>
+          <div class="field"><label>6. Analgesia</label><input type="text" id="ctAnalgesia" placeholder="Ex: Fentanil contínuo + Dipirona 20 mg/kg 6/6h" oninput="salvarAtual()"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>7. Outras Drogas</label><input type="text" id="ctOutras" placeholder="Ex: Omeprazol 1 mg/kg/dia; Hidrocortisona; Enoxaparina profilática" oninput="salvarAtual()"></div>
+          <div class="field"><label>8. Monitorização e Cuidados</label><input type="text" id="ctMonit" placeholder="Ex: Monitorização multiparamétrica contínua, BH rigoroso, HGT 6/6h, cabeceira 30°" oninput="salvarAtual()"></div>
+        </div>
+
+        <div class="row" style="margin-top:8px;">
+          <div class="field">
+            <label>Programação</label>
+            <textarea id="programacao" placeholder="Progredir dieta enteral; avaliar despertar diário e TRE amanhã." oninput="salvarAtual()"></textarea>
+          </div>
+          <div class="field">
+            <label>Pendências</label>
+            <textarea id="pendencias" placeholder="[ ] Checar hemocultura de 18/11&#10;[ ] Boletim médico aos pais" oninput="salvarAtual()"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COLUNA DIREITA: TEXTO PRONTO PARA COPIAR -->
+    <div class="preview-sticky">
+      <div class="card">
+        <div class="card-title">
+          <span>📄 Evolução Formatada (Pronta)</span>
+          <button class="btn-accent" onclick="copiarEvolucao()">📋 Copiar Evolução</button>
+        </div>
+        <textarea id="textoEvolucao" readonly></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = "utip_evolucao_20leitos_v1";
+const TOTAL_LEITOS = 20;
+let leitoAtual = 1;
+let bancoLeitos = {};
+
+const EXAME_NORMAL_PADRAO = 
+`- Geral: Bom estado geral, ativo e reativo, corado, hidratado, acianótico, anictérico, afebril ao toque, eupneico em ar ambiente, sem sinais de desconforto respiratório, fácies atípica.
+- Neurológico: Consciente, orientado/interativo para a faixa etária, Glasgow 15, pupilas isocóricas e fotorreagentes, motricidade e tônus preservados nos quatro membros, sem sinais meníngeos ou déficits focais.
+- Respiratório: Tórax simétrico, expansibilidade preservada, sem tiragens ou uso de musculatura acessória. Murmúrio vesicular audível e bem distribuído bilateralmente, sem ruídos adventícios.
+- Cardiovascular: Precórdio calmo, bulhas rítmicas, normofonéticas, em dois tempos, sem sopros ou atritos. Pulsos periféricos cheios, rítmicos e simétricos, extremidades aquecidas, TEC < 2 segundos.
+- Abdome: Plano/globoso fisiológico para a idade, flácido, depressível, indolor à palpação superficial e profunda, sem visceromegalias ou massas palpáveis. Ruídos hidroaéreos presentes e normoativos.
+- Geniturinário e Pele: Genitália externa típica para sexo e idade, sem lesões ou sinais flogísticos. Pele íntegra, turgor e elasticidade preservados, sem edemas, petéquias ou exantemas.`;
+
+function mostrarToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.style.display = "block";
+  setTimeout(() => { t.style.display = "none"; }, 3000);
+}
+
+function hojeISO() {
+  const d = new Date();
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - (off * 60 * 1000)).toISOString().split("T")[0];
+}
+
+function formatarDataBR(iso) {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function diffDias(isoInicio, incluirDia1 = true) {
+  if (!isoInicio) return null;
+  const inicio = new Date(isoInicio + "T00:00:00");
+  const hoje = new Date(hojeISO() + "T00:00:00");
+  const diff = Math.floor((hoje - inicio) / (1000 * 60 * 60 * 24));
+  if (diff < 0) return 0;
+  return incluirDia1 ? diff + 1 : diff;
+}
+
+function calcularIdade(dnIso) {
+  if (!dnIso) return "";
+  const nasc = new Date(dnIso + "T00:00:00");
+  const hoje = new Date(hojeISO() + "T00:00:00");
+  if (nasc > hoje) return "Data futura";
+
+  let anos = hoje.getFullYear() - nasc.getFullYear();
+  let meses = hoje.getMonth() - nasc.getMonth();
+  let dias = hoje.getDate() - nasc.getDate();
+
+  if (dias < 0) {
+    meses--;
+    const ultimoDiaMesAnterior = new Date(hoje.getFullYear(), hoje.getMonth(), 0).getDate();
+    dias += ultimoDiaMesAnterior;
+  }
+  if (meses < 0) {
+    anos--;
+    meses += 12;
+  }
+
+  let partes = [];
+  if (anos > 0) partes.push(`${anos} ${anos === 1 ? "ano" : "anos"}`);
+  if (meses > 0) partes.push(`${meses} ${meses === 1 ? "mês" : "meses"}`);
+  if (anos === 0 || dias > 0) partes.push(`${dias} ${dias === 1 ? "dia" : "dias"}`);
+  return partes.join(", ");
+}
+
+function calcularSC(peso, estatura) {
+  const p = parseFloat(peso);
+  const e = parseFloat(estatura);
+  if (!p || p <= 0) return null;
+  if (e && e > 0) {
+    const sc = Math.sqrt((p * e) / 3600);
+    return { valor: sc.toFixed(2), metodo: "Mosteller" };
+  } else {
+    const sc = (4 * p + 7) / (p + 90);
+    return { valor: sc.toFixed(2), metodo: "Est. Peso" };
+  }
+}
+
+function calcularHollidaySegar(peso) {
+  const p = parseFloat(peso);
+  if (!p || p <= 0) return null;
+  let vol = 0;
+  if (p <= 10) vol = p * 100;
+  else if (p <= 20) vol = 1000 + (p - 10) * 50;
+  else vol = 1500 + (p - 20) * 20;
+  return Math.round(vol);
+}
+
+function carregarBanco() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    bancoLeitos = raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    bancoLeitos = {};
+  }
+}
+
+function persistirBanco() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(bancoLeitos));
+}
+
+function novoPacienteVazio() {
+  return {
+    nome: "", dn: "", peso: "", estatura: "", pctHolliday: "100",
+    procedencia: "", residencia: "", dihData: "", diuData: "", alergias: "",
+    hd: "", svStatus: "Não (Ar ambiente)", svInicio: "", svDetalhes: "",
+    dispositivos: [], dispPrevios: "",
+    atb: [], medAtuais: "", medPrevios: "",
+    consultorias: "", examesLab: "", examesImg: "",
+    evolucao24h: "", exameFisico: "",
+    condPropedeutica: "",
+    ctDieta: "", ctHv: "", ctAtb: "", ctDva: "", ctSedacao: "", ctAnalgesia: "", ctOutras: "", ctMonit: "",
+    programacao: "", pendencias: "",
+    updatedAt: 0
+  };
+}
+
+function renderizarMapa() {
+  const grid = document.getElementById("mapaLeitos");
+  grid.innerHTML = "";
+  for (let i = 1; i <= TOTAL_LEITOS; i++) {
+    const p = bancoLeitos[i];
+    const ocupado = p && p.nome && p.nome.trim() !== "";
+    const idade = ocupado && p.dn ? calcularIdade(p.dn) : "—";
+    const peso = ocupado && p.peso ? `${p.peso} kg` : "—";
+
+    const div = document.createElement("div");
+    div.className = `leito-card ${ocupado ? "ocupado" : ""} ${i === leitoAtual ? "ativo" : ""}`;
+    div.onclick = () => selecionarLeito(i);
+    div.innerHTML = `
+      <div class="leito-num">Leito ${String(i).padStart(2, "0")}</div>
+      <div class="leito-nome">${ocupado ? p.nome : "Vago"}</div>
+      <div class="leito-meta">${ocupado ? `${idade} • ${peso}` : "Livre"}</div>
+    `;
+    grid.appendChild(div);
+  }
+}
+
+function selecionarLeito(num) {
+  leitoAtual = num;
+  document.getElementById("tituloLeitoAtivo").textContent = `1. Identificação e Internação — Leito ${String(num).padStart(2, "0")}`;
+  const p = bancoLeitos[num] || novoPacienteVazio();
+
+  const campos = [
+    "nome", "dn", "peso", "estatura", "pctHolliday", "procedencia", "residencia",
+    "dihData", "diuData", "alergias", "hd", "svStatus", "svInicio", "svDetalhes",
+    "dispPrevios", "medAtuais", "medPrevios", "consultorias", "examesLab", "examesImg",
+    "evolucao24h", "exameFisico", "condPropedeutica",
+    "ctDieta", "ctHv", "ctAtb", "ctDva", "ctSedacao", "ctAnalgesia", "ctOutras", "ctMonit",
+    "programacao", "pendencias"
+  ];
+  campos.forEach(c => {
+    const el = document.getElementById(c);
+    if (el) el.value = p[c] !== undefined ? p[c] : (c === "pctHolliday" ? "100" : "");
+  });
+
+  renderizarListaDinamica("dispositivos", p.dispositivos || []);
+  renderizarListaDinamica("atb", p.atb || []);
+  renderizarMapa();
+  atualizarCalculosETexto();
+}
+
+function renderizarListaDinamica(tipo, lista) {
+  const container = document.getElementById(tipo === "dispositivos" ? "listaDispositivos" : "listaAtb");
+  container.innerHTML = "";
+  lista.forEach((item, idx) => {
+    const dias = diffDias(item.inicio, true);
+    const row = document.createElement("div");
+    row.className = "dyn-item";
+    row.innerHTML = `
+      <input type="text" placeholder="${tipo === "dispositivos" ? "Ex: TOT nº 4,5 c/ cuff / AVC JID" : "Ex: Cefepime 150mg/kg/dia 8/8h"}" value="${item.nome || ""}" oninput="atualizarItem('${tipo}', ${idx}, 'nome', this.value)">
+      <input type="date" value="${item.inicio || ""}" onchange="atualizarItem('${tipo}', ${idx}, 'inicio', this.value)">
+      <div class="badge-dias">${dias ? "D" + dias : "—"}</div>
+      <button class="btn-del-item" title="Remover" onclick="removerItem('${tipo}', ${idx})">×</button>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function addItem(tipo) {
+  const p = bancoLeitos[leitoAtual] || novoPacienteVazio();
+  if (!p[tipo]) p[tipo] = [];
+  p[tipo].push({ nome: "", inicio: hojeISO() });
+  bancoLeitos[leitoAtual] = p;
+  renderizarListaDinamica(tipo, p[tipo]);
+  salvarAtual();
+}
+
+function atualizarItem(tipo, idx, campo, valor) {
+  const p = bancoLeitos[leitoAtual] || novoPacienteVazio();
+  p[tipo][idx][campo] = valor;
+  bancoLeitos[leitoAtual] = p;
+  if (campo === "inicio") renderizarListaDinamica(tipo, p[tipo]);
+  salvarAtual();
+}
+
+function removerItem(tipo, idx) {
+  const p = bancoLeitos[leitoAtual] || novoPacienteVazio();
+  p[tipo].splice(idx, 1);
+  bancoLeitos[leitoAtual] = p;
+  renderizarListaDinamica(tipo, p[tipo]);
+  salvarAtual();
+}
+
+function salvarAtual() {
+  const p = bancoLeitos[leitoAtual] || novoPacienteVazio();
+  const campos = [
+    "nome", "dn", "peso", "estatura", "pctHolliday", "procedencia", "residencia",
+    "dihData", "diuData", "alergias", "hd", "svStatus", "svInicio", "svDetalhes",
+    "dispPrevios", "medAtuais", "medPrevios", "consultorias", "examesLab", "examesImg",
+    "evolucao24h", "exameFisico", "condPropedeutica",
+    "ctDieta", "ctHv", "ctAtb", "ctDva", "ctSedacao", "ctAnalgesia", "ctOutras", "ctMonit",
+    "programacao", "pendencias"
+  ];
+  campos.forEach(c => {
+    const el = document.getElementById(c);
+    if (el) p[c] = el.value;
+  });
+  p.updatedAt = Date.now();
+  bancoLeitos[leitoAtual] = p;
+  persistirBanco();
+  renderizarMapa();
+  atualizarCalculosETexto();
+}
+
+function atualizarCalculosETexto() {
+  const p = bancoLeitos[leitoAtual] || novoPacienteVazio();
+  const idadeStr = calcularIdade(p.dn) || "—";
+  const scObj = calcularSC(p.peso, p.estatura);
+  const scStr = scObj ? `${scObj.valor} m² (${scObj.metodo})` : "—";
+  const hs100 = calcularHollidaySegar(p.peso);
+  const pct = parseFloat(p.pctHolliday) || 100;
+  const hsMeta = hs100 ? Math.round(hs100 * (pct / 100)) : null;
+
+  document.getElementById("calcIdade").textContent = idadeStr;
+  document.getElementById("calcSC").textContent = scStr;
+  document.getElementById("calcHolliday100").textContent = hs100 ? `${hs100} kcal/mL/dia` : "—";
+  document.getElementById("lblPct").textContent = pct;
+  document.getElementById("calcHollidayMeta").textContent = hsMeta ? `${hsMeta} mL/dia (${(hsMeta / 24).toFixed(1)} mL/h)` : "—";
+
+  // Gerar Texto
+  const dihDias = diffDias(p.dihData, false);
+  const diuDias = diffDias(p.diuData, false);
+  const svDias = diffDias(p.svInicio, true);
+
+  let dispTxt = (p.dispositivos || [])
+    .filter(d => d.nome.trim() !== "")
+    .map(d => {
+      const dCont = diffDias(d.inicio, true);
+      return `  - ${d.nome}${d.inicio ? ` (Início: ${formatarDataBR(d.inicio)} — D${dCont})` : ""}`;
+    }).join("\n");
+  if (!dispTxt) dispTxt = "  - Sem dispositivos invasivos no momento";
+
+  let atbTxt = (p.atb || [])
+    .filter(a => a.nome.trim() !== "")
+    .map(a => {
+      const dCont = diffDias(a.inicio, true);
+      return `  - ${a.nome}${a.inicio ? ` (Início: ${formatarDataBR(a.inicio)} — D${dCont})` : ""}`;
+    }).join("\n");
+  if (!atbTxt) atbTxt = "  - Sem antimicrobianos em uso";
+
+  const texto = 
+`EVOLUÇÃO MÉDICA DIÁRIA — UTI PEDIÁTRICA (${formatarDataBR(hojeISO())})
+LEITO ${String(leitoAtual).padStart(2, "0")}
+
+1. IDENTIFICAÇÃO E INTERNAÇÃO
+- Paciente: ${p.nome || "[Não informado]"}
+- Idade: ${idadeStr} (DN: ${formatarDataBR(p.dn) || "—"})
+- Peso: ${p.peso ? p.peso + " kg" : "—"} | Estatura: ${p.estatura ? p.estatura + " cm" : "Não aferida"} | SC: ${scStr}
+- Peso Calórico / Holliday-Segar (100%): ${hs100 ? hs100 + " kcal/dia" : "—"} ${hsMeta ? `| Meta (${pct}%): ${hsMeta} mL/dia (${(hsMeta/24).toFixed(1)} mL/h)` : ""}
+- Procedência: ${p.procedencia || "—"} | Residência: ${p.residencia || "—"}
+- Internação Hospitalar: ${formatarDataBR(p.dihData) || "—"} ${dihDias !== null ? `(DIH: ${dihDias} dias)` : ""}
+- Internação na UTIP: ${formatarDataBR(p.diuData) || "—"} ${diuDias !== null ? `(DIU: ${diuDias} dias)` : ""}
+- Alergias / Tipagem: ${p.alergias || "Nega"}
+
+2. HIPÓTESES DIAGNÓSTICAS
+${p.hd || "1. Em investigação"}
+
+3. SUPORTES, DISPOSITIVOS E MEDICAMENTOS
+- Suporte Ventilatório: ${p.svStatus}${p.svInicio ? ` | Início: ${formatarDataBR(p.svInicio)} (D${svDias})` : ""}
+  ${p.svDetalhes ? "Detalhes/Prévios: " + p.svDetalhes : ""}
+- Dispositivos em Uso:
+${dispTxt}
+${p.dispPrevios ? "- Dispositivos Prévios (Retirados): " + p.dispPrevios : ""}
+- Antimicrobianos em Uso:
+${atbTxt}
+- Outras Medicações em Uso:
+  ${p.medAtuais || "Nenhuma"}
+${p.medPrevios ? "- Medicamentos Prévios (Suspensos/Concluídos): " + p.medPrevios : ""}
+
+4. CONSULTORIAS E INTERCONSULTAS
+${p.consultorias || "Sem interconsultas registradas."}
+
+5. EXAMES COMPLEMENTARES
+- Laboratoriais e Culturas:
+${p.examesLab || "Sem exames recentes registrados."}
+- Exames de Imagem e Outros:
+${p.examesImg || "Sem exames de imagem registrados."}
+
+6. EVOLUÇÃO CLÍNICA (24H) E EXAME FÍSICO
+- Evolução / Sinais Vitais / Balanço Hídrico:
+${p.evolucao24h || "Sem intercorrências relatadas nas últimas 24h."}
+- Exame Físico:
+${p.exameFisico || EXAME_NORMAL_PADRAO}
+
+7. CONDUTA PROPEDÊUTICA
+${p.condPropedeutica || "Manter acompanhamento clínico e laboratorial."}
+
+8. CONDUTA TERAPÊUTICA
+- Dieta / Jejum: ${p.ctDieta || "—"}
+- Hidratação Venosa: ${p.ctHv || "—"}
+- Antibióticos / Antimicrobianos: ${p.ctAtb || "—"}
+- Drogas Vasoativas: ${p.ctDva || "—"}
+- Sedação: ${p.ctSedacao || "—"}
+- Analgesia: ${p.ctAnalgesia || "—"}
+- Outras Drogas: ${p.ctOutras || "—"}
+- Monitorização e Cuidados Gerais: ${p.ctMonit || "—"}
+
+9. PROGRAMAÇÃO
+${p.programacao || "Conforme evolução clínica."}
+
+10. PENDÊNCIAS
+${p.pendencias || "Sem pendências imediatas."}`;
+
+  document.getElementById("textoEvolucao").value = texto;
+}
+
+function preencherExameNormal() {
+  document.getElementById("exameFisico").value = EXAME_NORMAL_PADRAO;
+  salvarAtual();
+  mostrarToast("Exame físico padrão preenchido!");
+}
+
+function liberarLeito() {
+  if (!confirm(`Confirmar ALTA / LIBERAÇÃO do Leito ${String(leitoAtual).padStart(2, "0")}? Os dados deste leito serão limpos.`)) return;
+  delete bancoLeitos[leitoAtual];
+  persistirBanco();
+  selecionarLeito(leitoAtual);
+  mostrarToast(`Leito ${String(leitoAtual).padStart(2, "0")} liberado!`);
+}
+
+function copiarEvolucao() {
+  const txt = document.getElementById("textoEvolucao");
+  txt.select();
+  txt.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(txt.value).then(() => {
+    mostrarToast("✅ Evolução copiada para a área de transferência!");
+  });
+}
+
+function exportarPlantao() {
+  const blob = new Blob([JSON.stringify(bancoLeitos, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `plantao_utip_${hojeISO()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  mostrarToast("📤 Arquivo do plantão exportado!");
+}
+
+function importarMesclarPlantao(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const importado = JSON.parse(e.target.result);
+      let atualizados = 0;
+      for (let i = 1; i <= TOTAL_LEITOS; i++) {
+        if (importado[i]) {
+          const localTime = (bancoLeitos[i] && bancoLeitos[i].updatedAt) || 0;
+          const impTime = importado[i].updatedAt || 1;
+          if (impTime >= localTime) {
+            bancoLeitos[i] = importado[i];
+            atualizados++;
+          }
+        }
+      }
+      persistirBanco();
+      selecionarLeito(leitoAtual);
+      mostrarToast(`📥 Mesclagem concluída! ${atualizados} leito(s) atualizado(s).`);
+    } catch (err) {
+      alert("Arquivo inválido.");
+    }
+    event.target.value = "";
+  };
+  reader.readAsText(file);
+}
+
+function carregarExemplo() {
+  const hoje = new Date();
+  const diasAtras = (n) => {
+    const d = new Date(hoje);
+    d.setDate(d.getDate() - n);
+    return d.toISOString().split("T")[0];
+  };
+  bancoLeitos[leitoAtual] = {
+    nome: "Lucas Gabriel Mendes",
+    dn: "2024-03-15",
+    peso: "11.8",
+    estatura: "",
+    pctHolliday: "100",
+    procedencia: "Pronto-Socorro Pediátrico",
+    residencia: "Cuiabá - MT",
+    dihData: diasAtras(4),
+    diuData: diasAtras(3),
+    alergias: "Nega alergias conhecidas | A+",
+    hd: "1. Insuficiência Respiratória Aguda Hipoxêmica\n2. Pneumonia Adquirida na Comunidade complicada com derrame pleural",
+    svStatus: "Sim - VMI (Ventilação Mecânica Invasiva)",
+    svInicio: diasAtras(3),
+    svDetalhes: "Modo PCV | PI 15 cmH2O | PEEP 7 cmH2O | FR 22 irpm | FiO2 35% | Prévio: CNAF no dia da admissão",
+    dispositivos: [
+      { nome: "TOT nº 4,5 com cuff, rima 13 cm", inicio: diasAtras(3) },
+      { nome: "AVC em veia jugular interna direita (duplo lúmen)", inicio: diasAtras(3) },
+      { nome: "Sonda Nasoenteral (SNE)", inicio: diasAtras(2) }
+    ],
+    dispPrevios: "SVD de " + formatarDataBR(diasAtras(3)) + " até " + formatarDataBR(diasAtras(1)),
+    atb: [
+      { nome: "Ceftriaxona 100 mg/kg/dia EV 12/12h", inicio: diasAtras(4) },
+      { nome: "Oxacilina 200 mg/kg/dia EV 6/6h", inicio: diasAtras(2) }
+    ],
+    medAtuais: "Midazolam 0,15 mg/kg/h; Fentanil 1,5 mcg/kg/h; Dipirona 20 mg/kg EV 6/6h; Omeprazol 1 mg/kg/dia EV",
+    medPrevios: "Noradrenalina de " + formatarDataBR(diasAtras(3)) + " até " + formatarDataBR(diasAtras(2)) + " (desmamada)",
+    consultorias: `[${formatarDataBR(diasAtras(2))}] Cirurgia Pediátrica: avaliou USG de tórax, derrame laminar sem indicação de drenagem no momento.`,
+    examesLab: `[${formatarDataBR(hojeISO())}] Hb 10,8 | Ht 32% | Leuco 13.200 (Bast 4% / Seg 68%) | Plaq 245.000 | PCR 36 | Ureia 22 | Cr 0,38 | Na 139 | K 4,2\nGasometria Arterial: pH 7,40 | pCO2 37 | pO2 98 | HCO3 22,5 | BE -1,2 | SatO2 98% (PaO2/FiO2: 280)`,
+    examesImg: `[${formatarDataBR(diasAtras(1))}] RX Tórax: TOT em T3, CVC em veia cava superior, melhora da aeração em base direita.`,
+    evolucao24h: "Estável hemodinamicamente, sem DVA, afebril nas últimas 24h. FC 108-124 bpm | FR 22-26 irpm | PA 94/58 (PAM 70) mmHg | SpO2 97-99% | BH 24h: +85 mL (+7,2 mL/kg) | Diurese: 2,8 mL/kg/h.",
+    exameFisico: EXAME_NORMAL_PADRAO,
+    condPropedeutica: "Solicito hemograma, PCR, Na, K e gasometria arterial para amanhã às 06h.",
+    ctDieta: "Dieta enteral polimérica infantil via SNE 45 mL de 3/3h (oferta ~100 kcal/kg/dia)",
+    ctHv: "Soro de manutenção basal a 50% da Holliday-Segar (descontando aporte enteral)",
+    ctAtb: "Mantenho Ceftriaxona (D5) e Oxacilina (D3)",
+    ctDva: "Sem drogas vasoativas no momento",
+    ctSedacao: "Reduzir Midazolam para 0,1 mg/kg/h visando despertar diário",
+    ctAnalgesia: "Manter Fentanil 1,5 mcg/kg/h + Dipirona fixa",
+    ctOutras: "Omeprazol 1 mg/kg/dia; Salbutamol spray 4 jatos 6/6h",
+    ctMonit: "Monitorização multiparamétrica contínua, BH rigoroso, glicemia capilar 6/6h, cabeceira a 30°",
+    programacao: "Progredir desmame ventilatório e avaliar Teste de Respiração Espontânea (TRE) amanhã.",
+    pendencias: "[ ] Checar resultado final de hemoculturas\n[ ] Boletim médico aos responsáveis",
+    updatedAt: Date.now()
+  };
+  persistirBanco();
+  selecionarLeito(leitoAtual);
+  mostrarToast("📋 Exemplo clínico carregado!");
+}
+
+// Inicialização
+document.getElementById("dataHojeHeader").textContent = `Data atual do sistema: ${formatarDataBR(hojeISO())} — Contadores atualizados automaticamente`;
+carregarBanco();
+selecionarLeito(1);
+</script>
+</body>
+</html>
